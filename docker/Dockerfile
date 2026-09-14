@@ -107,11 +107,17 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     NODE_ENV=production
 
-# Install Node.js 20.x and system tools for hardware querying
+USER root
+
+# Install OpenSSH server (for Vast.ai), NodeSource requirements, and system utilities
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    openssh-server \
+    ca-certificates \
+    gnupg \
     curl \
     jq \
     pciutils \
+    && mkdir -p /var/run/sshd \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \
     && apt-get clean \
@@ -136,6 +142,6 @@ COPY worker.js /app/worker.js
 
 RUN chmod +x /app/entrypoint.sh
 
-EXPOSE 8080
+EXPOSE 8080 22
 
 ENTRYPOINT ["/app/entrypoint.sh"]
