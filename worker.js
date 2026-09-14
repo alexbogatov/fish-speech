@@ -171,10 +171,30 @@ const prepare_job = async (job_data) => {
   let local_ref_path = null;
   if (audio_url) {
     await mkdir(INPUT_DIR, { recursive: true });
-    const ext = audio_url.includes('.wav') ? 'wav' : 'mp3';
-    const filename = `ref_${WORKER_SUFFIX}_${job_id}.${ext}`;
-    local_ref_path = join(INPUT_DIR, filename);
-    await download_file(audio_url, local_ref_path);
+    const raw_filename = `raw_ref_${WORKER_SUFFIX}_${job_id}.mp3`;
+    const trimmed_filename = `ref_${WORKER_SUFFIX}_${job_id}.wav`;
+    const raw_path = join(INPUT_DIR, raw_filename);
+    const trimmed_path = join(INPUT_DIR, trimmed_filename);
+
+    await download_file(audio_url, raw_path);
+
+    // Slice reference to first 8 seconds (optimal for S2-Pro VQ extraction without VRAM spikes)
+    try {
+      await execFileAsync('ffmpeg', [
+        '-y',
+        '-ss', '0',
+        '-t', '10',
+        '-i', raw_path,
+        '-ar', '44100',
+        '-ac', '1',
+        trimmed_path
+      ]);
+      await unlink(raw_path);
+      local_ref_path = trimmed_path;
+    } catch (ffmpegErr) {
+      console.warn(`${TAG} ffmpeg trim warning: ${ffmpegErr.message}, using full file`);
+      local_ref_path = raw_path;
+    }
   }
 
   return {

@@ -238,7 +238,8 @@ const plan = JSON.parse(fs.readFileSync(0, "utf-8"));
 plan.forEach(item => {
     console.log(`[Startup] Spawning API server ${item.instance} on GPU ${item.gpu} (Port ${item.port})`);
     const backendEnv = Object.assign({}, process.env, {
-        CUDA_VISIBLE_DEVICES: String(item.gpu)
+        CUDA_VISIBLE_DEVICES: String(item.gpu),
+        PYTORCH_CUDA_ALLOC_CONF: "expandable_segments:True"
     });
     const logOut = fs.openSync(`${logDir}/tts_backend_${item.instance}.log`, "a");
     const child = cp.spawn("uv", [
@@ -246,7 +247,8 @@ plan.forEach(item => {
         "--listen", `0.0.0.0:${item.port}`,
         "--llama-checkpoint-path", ckptDir,
         "--decoder-checkpoint-path", `${ckptDir}/codec.pth`,
-        "--decoder-config-name", "modded_dac_vq"
+        "--decoder-config-name", "modded_dac_vq",
+        "--half"
     ], {
         env: backendEnv,
         detached: true,
